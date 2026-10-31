@@ -1,0 +1,11 @@
+# Binarios y artefactos de Maven
+target/
+
+# Configuración del IDE
+.idea/
+*.iml
+.vscode/
+
+# Logs y sistema
+*.log
+.DS_Store

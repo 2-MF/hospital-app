@@ -119,7 +119,6 @@ public class Usuario {
                 ", telefono='" + telefono + '\'' +
                 ", correo='" + correo + '\'' +
                 ", usuario='" + usuario + '\'' +
-                ", contrasena='" + contrasena + '\'' +
                 ", fechaAlta=" + fechaAlta +
                 ", ultimoAcceso=" + ultimoAcceso +
                 ", activo=" + activo +

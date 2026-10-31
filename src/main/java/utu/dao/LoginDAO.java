@@ -10,55 +10,42 @@ public class LoginDAO {
 
     private final Connection conexion;
 
-    public LoginDAO(){
+    public LoginDAO() {
         conexion = Conexion.conectar();
     }
 
-     public Usuario iniciarSesion(String usuario, String contrasena) {
-
+    public Usuario iniciarSesion(String usuario, String contrasena) {
         String sql = """
-                SELECT
-                    u.id_usuario,
-                    u.nombre,
-                    u.apellido,
-                    u.cedula,
-                    u.telefono,
-                    u.correo,
-                    u.usuario,
-                    u.contrasena,
-                    u.activo,
-                    p.id_perfil,
-                    p.nombre AS nombre_perfil,
-                    p.descripcion,
-                    p.activo AS activo_perfil
+                SELECT u.*, p.nombre AS perfil_nombre, p.descripcion AS perfil_descripcion, p.activo AS perfil_activo
                 FROM usuario u
-                INNER JOIN perfil p
-                    ON u.id_perfil = p.id_perfil
-                WHERE u.usuario = ?
-                AND u.activo = true
+                INNER JOIN perfil p ON u.id_perfil = p.id_perfil
+                WHERE u.usuario = ? AND u.activo = true
                 """;
 
         try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-
             ps.setString(1, usuario);
-
             ResultSet rs = ps.executeQuery();
 
             if (rs.next()) {
-
-                // Obtener el hash almacenado
+                // Verificar la contraseña contra el hash guardado
                 String hashGuardado = rs.getString("contrasena");
-
-                // Verificar la contraseña ingresada
-                if (!PasswordUtil.verificar(contrasena, hashGuardado)) {
+                boolean contrasenaValida = false;
+                if (hashGuardado != null && !hashGuardado.isBlank()) {
+                    try {
+                        contrasenaValida = PasswordUtil.verificar(contrasena, hashGuardado);
+                    } catch (IllegalArgumentException ex) {
+                        contrasenaValida = false;
+                    }
+                }
+                if (!contrasenaValida) {
                     return null;
                 }
 
                 Perfil perfil = new Perfil();
                 perfil.setIdPerfil(rs.getInt("id_perfil"));
-                perfil.setNombre(rs.getString("nombre_perfil"));
-                perfil.setDescripcion(rs.getString("descripcion"));
-                perfil.setActivo(rs.getBoolean("activo_perfil"));
+                perfil.setNombre(rs.getString("perfil_nombre"));
+                perfil.setDescripcion(rs.getString("perfil_descripcion"));
+                perfil.setActivo(rs.getBoolean("perfil_activo"));
 
                 Usuario u = new Usuario();
                 u.setIdUsuario(rs.getInt("id_usuario"));
@@ -71,6 +58,10 @@ public class LoginDAO {
                 u.setActivo(rs.getBoolean("activo"));
                 u.setPerfil(perfil);
 
+                registrarAcceso(u.getIdUsuario());
+                new AuditoriaDAO().registrar("usuario", "LOGIN",
+                        "Inicio de sesión del usuario '" + u.getUsuario() + "'", u.getIdUsuario());
+
                 return u;
             }
 
@@ -79,5 +70,16 @@ public class LoginDAO {
         }
 
         return null;
+    }
+
+    /** Actualiza la fecha de último acceso del usuario. */
+    private void registrarAcceso(int idUsuario) {
+        String sql = "UPDATE usuario SET ultimo_acceso = CURRENT_DATE WHERE id_usuario = ?";
+        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setInt(1, idUsuario);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }

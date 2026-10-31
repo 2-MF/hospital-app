@@ -30,6 +30,7 @@ public class FrmMarca extends JInternalFrame {
 
     private MarcaDAO marcaDAO = new MarcaDAO();
     private DefaultTableModel modeloTabla;
+    private javax.swing.table.TableRowSorter<TableModel> ordenador;
 
     public FrmMarca() {
 
@@ -60,7 +61,7 @@ public class FrmMarca extends JInternalFrame {
 
     gbc.gridx = 0;
     gbc.gridy = 0;
-    formulario.add(new JLabel("Código"), gbc);
+    formulario.add(new JLabel("ID"), gbc);
 
     gbc.gridx = 1;
     txtId = new JTextField(8);
@@ -142,7 +143,15 @@ public class FrmMarca extends JInternalFrame {
             "Descripción",
             "Activo"
         }
-    ));
+    ) {
+        @Override
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    });
+
+    ordenador = new javax.swing.table.TableRowSorter<>(tabla.getModel());
+    tabla.setRowSorter(ordenador);
 
     panelTabla.add(new JScrollPane(tabla), BorderLayout.CENTER);
 
@@ -171,131 +180,160 @@ public class FrmMarca extends JInternalFrame {
         chkActivo.setSelected(true);
         txtNombre.requestFocus();
     }
+
     private Marca obtenerMarca(){
 
-    Marca marca = new Marca();
+        Marca marca = new Marca();
 
-    if(!txtId.getText().isBlank()){
+        if(!txtId.getText().isBlank()){
+            marca.setIdMarca(Integer.parseInt(txtId.getText()));
+        }
 
-        marca.setIdMarca(Integer.parseInt(txtId.getText()));
+        marca.setNombre(txtNombre.getText());
+        marca.setDescripcion(txtDescripcion.getText());
+        marca.setActivo(chkActivo.isSelected());
 
+        return marca;
     }
 
-    marca.setNombre(txtNombre.getText());
+    private void eventos(){
 
-    marca.setDescripcion(txtDescripcion.getText());
+        btnNuevo.addActionListener(e->limpiar());
+        btnGuardar.addActionListener(e->guardar());
+        btnModificar.addActionListener(e->modificar());
+        btnEliminar.addActionListener(e->eliminar());
+        btnCancelar.addActionListener(e->limpiar());
 
-    marca.setActivo(chkActivo.isSelected());
+        tabla.getSelectionModel().addListSelectionListener(this::seleccionarFila);
 
-    return marca;
+        txtBuscar.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
 
-}
-private void eventos(){
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                filtrar();
+            }
 
-    btnNuevo.addActionListener(e->limpiar());
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                filtrar();
+            }
 
-    btnGuardar.addActionListener(e->guardar());
-
-    btnModificar.addActionListener(e->modificar());
-
-    btnEliminar.addActionListener(e->eliminar());
-
-    //tabla.getSelectionModel().addListSelectionListener(this::seleccionarFila);
-
-}
-private void guardar(){
-
-    if(txtNombre.getText().isBlank()){
-
-        JOptionPane.showMessageDialog(this,
-                "Ingrese el nombre.");
-
-        return;
-
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                filtrar();
+            }
+        });
     }
 
-    if(marcaDAO.insertar(obtenerMarca())){
-
-        JOptionPane.showMessageDialog(this,
-                "Marca registrada.");
-
-        limpiar();
-
-        cargarTabla();
+    private void filtrar() {
+        String texto = txtBuscar.getText().trim();
+        if (texto.isEmpty()) {
+            ordenador.setRowFilter(null);
+        } else {
+            ordenador.setRowFilter(javax.swing.RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(texto)));
+        }
     }
 
+    private void guardar(){
+
+        if(txtNombre.getText().isBlank()){
+            JOptionPane.showMessageDialog(this, "Ingrese el nombre.");
+            return;
+        }
+
+        if(txtId.getText().isBlank() && marcaDAO.existe(txtNombre.getText().trim())){
+            JOptionPane.showMessageDialog(this,
+                    "Ya existe una marca con ese nombre.",
+                    "Aviso",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if(marcaDAO.insertar(obtenerMarca())){
+
+            JOptionPane.showMessageDialog(this, "Marca registrada.");
+
+            limpiar();
+            cargarTabla();
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo registrar la marca.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void modificar(){
 
-    if(txtId.getText().isBlank()) return;
+        if(txtId.getText().isBlank()) return;
 
-    if(marcaDAO.actualizar(obtenerMarca())){
+        if(marcaDAO.actualizar(obtenerMarca())){
 
-        JOptionPane.showMessageDialog(this,
-                "Marca modificada.");
+            JOptionPane.showMessageDialog(this, "Marca modificada.");
 
-        limpiar();
-
-        cargarTabla();
-
+            limpiar();
+            cargarTabla();
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo modificar la marca.",
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
-}
+    private void eliminar(){
 
-private void eliminar(){
+        if(txtId.getText().isBlank()) return;
 
-    if(txtId.getText().isBlank()) return;
+        int opcion = JOptionPane.showConfirmDialog(
+                this,
+                "¿Eliminar la marca?",
+                "Confirmar",
+                JOptionPane.YES_NO_OPTION
+        );
 
-    int opcion = JOptionPane.showConfirmDialog(
+        if(opcion==JOptionPane.YES_OPTION){
 
-            this,
+            if(marcaDAO.eliminar(Integer.parseInt(txtId.getText()))){
+                JOptionPane.showMessageDialog(this, "Marca eliminada.");
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        "No se pudo eliminar la marca.",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
 
-            "¿Eliminar la marca?",
-
-            "Confirmar",
-
-            JOptionPane.YES_NO_OPTION
-
-    );
-
-    if(opcion==JOptionPane.YES_OPTION){
-
-        marcaDAO.eliminar(Integer.parseInt(txtId.getText()));
-
-        limpiar();
-
-        cargarTabla();
-
+            limpiar();
+            cargarTabla();
+        }
     }
 
-}
+    private void seleccionarFila(ListSelectionEvent e) {
 
-private void seleccionarFila(ListSelectionEvent e) {
+        if (e.getValueIsAdjusting()) {
+            return;
+        }
 
-    if (e.getValueIsAdjusting()) {
-        return;
+        int fila = tabla.getSelectedRow();
+
+        if (fila < 0) {
+            return;
+        }
+
+        TableModel modelo = tabla.getModel();
+
+        int filaModelo = tabla.convertRowIndexToModel(fila);
+
+        txtId.setText(String.valueOf(modelo.getValueAt(filaModelo, 0)));
+
+        Object nombre = modelo.getValueAt(filaModelo, 1);
+        txtNombre.setText(nombre == null ? "" : nombre.toString());
+
+        Object descripcion = modelo.getValueAt(filaModelo, 2);
+        txtDescripcion.setText(descripcion == null ? "" : descripcion.toString());
+
+        Object activo = modelo.getValueAt(filaModelo, 3);
+        chkActivo.setSelected(Boolean.TRUE.equals(activo));
     }
-
-    int fila = tabla.getSelectedRow();
-
-    if (fila < 0) {
-        return;
-    }
-
-    TableModel modelo = tabla.getModel();
-
-    txtId.setText(String.valueOf(modelo.getValueAt(fila, 0)));
-
-    Object nombre = modelo.getValueAt(fila, 1);
-    txtNombre.setText(nombre == null ? "" : nombre.toString());
-
-    Object descripcion = modelo.getValueAt(fila, 2);
-    txtDescripcion.setText(descripcion == null ? "" : descripcion.toString());
-
-    Object activo = modelo.getValueAt(fila, 3);
-    chkActivo.setSelected(Boolean.TRUE.equals(activo));
-}
-
 
 }

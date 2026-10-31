@@ -15,6 +15,7 @@ import java.awt.GridLayout;
 import javax.swing.JOptionPane;
 import utu.dao.LoginDAO;
 import utu.modelo.Usuario;
+import utu.util.Sesion;
 
 public class Login extends JFrame{
     
@@ -63,9 +64,22 @@ public class Login extends JFrame{
     private void ingresar() {
         String usuario = txtUsuario.getText().trim();
         String contrasena = String.valueOf(txtPassword.getPassword());
-        LoginDAO loginDAO = new LoginDAO();
+
+        LoginDAO loginDAO;
+        try {
+            loginDAO = new LoginDAO();
+        } catch (RuntimeException e) {
+            JOptionPane.showMessageDialog(
+                this,
+                "No se pudo conectar a la base de datos.\nVerifique que MySQL/MariaDB esté en ejecución.\n\nDetalle: " + e.getMessage(),
+                "Error de conexión",
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         Usuario usuarioLogueado = loginDAO.iniciarSesion(usuario, contrasena);
         if (usuarioLogueado != null) {
+            Sesion.setUsuario(usuarioLogueado);
             JOptionPane.showMessageDialog(
                 this, 
                 "Bienvenido " + usuarioLogueado.getNombre(),
