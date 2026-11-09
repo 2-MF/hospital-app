@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public class Intervencion {
-
     private int idIntervencion;
     private LocalDate fecha;
     private String descripcion;

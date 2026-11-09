@@ -19,7 +19,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class UsuarioDAOTest {
-
     private UsuarioDAO dao;
 
     @BeforeClass
@@ -46,7 +45,6 @@ public class UsuarioDAOTest {
         return u;
     }
 
-    /** Id real en la base del usuario de prueba indicado. */
     private int idDe(String nombreUsuario) {
         return ((Number) TestDatabase.valorEscalar(
                 "SELECT id_usuario FROM usuario WHERE usuario = '" + nombreUsuario + "'")).intValue();
@@ -108,7 +106,7 @@ public class UsuarioDAOTest {
                 "SELECT contrasena FROM usuario WHERE usuario = 'test_upd'"));
 
         u.setNombre("TestModificado");
-        u.setContrasena(null); // no cambia la contraseña
+        u.setContrasena(null);
         assertTrue(dao.actualizar(u));
 
         Usuario actualizado = dao.buscarPorId(u.getIdUsuario());

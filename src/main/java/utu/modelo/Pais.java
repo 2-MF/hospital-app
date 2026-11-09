@@ -1,7 +1,6 @@
 package utu.modelo;
 
 public class Pais {
-
     private int idPais;
     private String nombre;
 

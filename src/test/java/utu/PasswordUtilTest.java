@@ -10,7 +10,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class PasswordUtilTest {
-
     @Test
     public void hashGeneraFormatoBCrypt() {
         String hash = PasswordUtil.hash("admin123");
@@ -54,7 +53,7 @@ public class PasswordUtilTest {
 
     @Test
     public void verificarConContrasenaLarga() {
-        String contrasena = "aB9$".repeat(15); // 60 caracteres
+        String contrasena = "aB9$".repeat(15);
         String hash = PasswordUtil.hash(contrasena);
         assertTrue(PasswordUtil.verificar(contrasena, hash));
         assertFalse(PasswordUtil.verificar(contrasena.substring(1), hash));
@@ -69,18 +68,15 @@ public class PasswordUtilTest {
 
     @Test
     public void verificarConHashInvalidoLanzaExcepcion() {
-        // LoginDAO captura esta excepción y trata el login como inválido
         try {
             PasswordUtil.verificar("cualquierCosa", "esto-no-es-un-hash-bcrypt");
             fail("Debía lanzar IllegalArgumentException con un hash corrupto");
         } catch (IllegalArgumentException expected) {
-            // comportamiento esperado
         }
     }
 
     @Test
     public void hashConTamanioBCryptEstándar() {
-        // 60 caracteres: formato $2a$ + 2 dígitos de costo + $ + 22 de salt + 31 de hash
         String hash = PasswordUtil.hash("x");
         assertEquals("$2a$", hash.substring(0, 4));
         assertEquals(60, hash.length());

@@ -2,22 +2,21 @@ package utu.dao;
 
 import utu.modelo.Perfil;
 import utu.modelo.Usuario;
-import utu.conexion.Conexion;
 import utu.util.PasswordUtil;
 
-import java.sql.*;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-public class UsuarioDAO {
+public class UsuarioDAO extends BaseDAO {
 
-    private final Connection conexion;
+    static final String SELECT = "SELECT u.*, p.nombre AS perfil_nombre, p.descripcion AS perfil_descripcion, "
+            + "p.activo AS perfil_activo FROM usuario u INNER JOIN perfil p ON u.id_perfil = p.id_perfil";
 
-    public UsuarioDAO() {
-        conexion = Conexion.conectar();
-    }
-
-    private Usuario mapearUsuario(ResultSet rs) throws SQLException {
+    static Usuario mapearUsuario(ResultSet rs) throws SQLException {
         Usuario u = new Usuario();
         u.setIdUsuario(rs.getInt("id_usuario"));
         u.setNombre(rs.getString("nombre"));
@@ -26,17 +25,8 @@ public class UsuarioDAO {
         u.setTelefono(rs.getString("telefono"));
         u.setCorreo(rs.getString("correo"));
         u.setUsuario(rs.getString("usuario"));
-
-        java.sql.Date fechaAlta = rs.getDate("fecha_alta");
-        if (fechaAlta != null) {
-            u.setFechaAlta(fechaAlta.toLocalDate());
-        }
-
-        java.sql.Date ultimoAcceso = rs.getDate("ultimo_acceso");
-        if (ultimoAcceso != null) {
-            u.setUltimoAcceso(ultimoAcceso.toLocalDate());
-        }
-
+        u.setFechaAlta(fecha(rs, "fecha_alta"));
+        u.setUltimoAcceso(fecha(rs, "ultimo_acceso"));
         u.setActivo(rs.getBoolean("activo"));
 
         Perfil perfil = new Perfil();
@@ -49,130 +39,54 @@ public class UsuarioDAO {
         return u;
     }
 
+    private static boolean hayContrasena(Usuario u) {
+        return u.getContrasena() != null && !u.getContrasena().isBlank();
+    }
+
     public boolean insertar(Usuario u) {
-        if (u.getContrasena() == null || u.getContrasena().isBlank()) {
+        if (!hayContrasena(u)) {
             return false;
         }
-        String hash = PasswordUtil.hash(u.getContrasena());
-        String sql = "INSERT INTO usuario (nombre, apellido, cedula, telefono, correo, usuario, contrasena, fecha_alta, activo, id_perfil) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = conexion.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, u.getNombre());
-            ps.setString(2, u.getApellido());
-            ps.setString(3, u.getCedula());
-            ps.setString(4, u.getTelefono());
-            ps.setString(5, u.getCorreo());
-            ps.setString(6, u.getUsuario());
-            ps.setString(7, hash);
-            ps.setDate(8, java.sql.Date.valueOf(java.time.LocalDate.now()));
-            ps.setBoolean(9, u.isActivo());
-            ps.setInt(10, u.getPerfil().getIdPerfil());
-
-            if (ps.executeUpdate() > 0) {
-                // Recupera el id generado para que el objeto quede sincronizado con la base
-                try (ResultSet rs = ps.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        u.setIdUsuario(rs.getInt(1));
-                    }
-                }
-                new AuditoriaDAO().registrar("usuario", "INSERT", "Alta de usuario '" + u.getUsuario() + "'");
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        int id = insertarAuditado(
+                "INSERT INTO usuario (nombre, apellido, cedula, telefono, correo, usuario, contrasena, fecha_alta, activo, id_perfil) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "usuario", "Alta de usuario '" + u.getUsuario() + "'",
+                u.getNombre(), u.getApellido(), u.getCedula(), u.getTelefono(), u.getCorreo(), u.getUsuario(),
+                PasswordUtil.hash(u.getContrasena()), LocalDate.now(), u.isActivo(), u.getPerfil().getIdPerfil());
+        if (id > 0) {
+            u.setIdUsuario(id);
         }
-        return false;
+        return id >= 0;
     }
 
     public boolean actualizar(Usuario u) {
-        boolean cambiarContrasena = u.getContrasena() != null && !u.getContrasena().isBlank();
-        String sql;
+        boolean cambiarContrasena = hayContrasena(u);
+        String sql = "UPDATE usuario SET nombre = ?, apellido = ?, cedula = ?, telefono = ?, correo = ?, usuario = ?, "
+                + (cambiarContrasena ? "contrasena = ?, " : "") + "activo = ?, id_perfil = ? WHERE id_usuario = ?";
+        List<Object> params = new ArrayList<>(Arrays.asList(
+                u.getNombre(), u.getApellido(), u.getCedula(), u.getTelefono(), u.getCorreo(), u.getUsuario()));
         if (cambiarContrasena) {
-            sql = "UPDATE usuario SET nombre = ?, apellido = ?, cedula = ?, telefono = ?, correo = ?, usuario = ?, contrasena = ?, activo = ?, id_perfil = ? WHERE id_usuario = ?";
-        } else {
-            sql = "UPDATE usuario SET nombre = ?, apellido = ?, cedula = ?, telefono = ?, correo = ?, usuario = ?, activo = ?, id_perfil = ? WHERE id_usuario = ?";
+            params.add(PasswordUtil.hash(u.getContrasena()));
         }
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, u.getNombre());
-            ps.setString(2, u.getApellido());
-            ps.setString(3, u.getCedula());
-            ps.setString(4, u.getTelefono());
-            ps.setString(5, u.getCorreo());
-            ps.setString(6, u.getUsuario());
-            int pos = 7;
-            if (cambiarContrasena) {
-                ps.setString(pos, PasswordUtil.hash(u.getContrasena()));
-                pos++;
-            }
-            ps.setBoolean(pos, u.isActivo());
-            pos++;
-            ps.setInt(pos, u.getPerfil().getIdPerfil());
-            pos++;
-            ps.setInt(pos, u.getIdUsuario());
-
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("usuario", "UPDATE", "Actualización de usuario '" + u.getUsuario() + "'");
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        params.add(u.isActivo());
+        params.add(u.getPerfil().getIdPerfil());
+        params.add(u.getIdUsuario());
+        return actualizarAuditado(sql, "usuario", "Actualización de usuario '" + u.getUsuario() + "'", params.toArray());
     }
 
     public boolean eliminar(int id) {
-        String sql = "UPDATE usuario SET activo = false WHERE id_usuario = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("usuario", "DELETE", "Baja lógica de usuario id=" + id);
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return eliminarAuditado("UPDATE usuario SET activo = false WHERE id_usuario = ?",
+                "usuario", "Baja lógica de usuario id=" + id, id);
     }
 
     public Usuario buscarPorId(int id) {
-        String sql = "SELECT u.*, p.nombre AS perfil_nombre, p.descripcion AS perfil_descripcion, p.activo AS perfil_activo FROM usuario u INNER JOIN perfil p ON u.id_perfil = p.id_perfil WHERE u.id_usuario = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return mapearUsuario(rs);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return buscar(SELECT + " WHERE u.id_usuario = ?", UsuarioDAO::mapearUsuario, id);
     }
 
     public List<Usuario> listarTodos() {
-        String sql = "SELECT u.*, p.nombre AS perfil_nombre, p.descripcion AS perfil_descripcion, p.activo AS perfil_activo FROM usuario u INNER JOIN perfil p ON u.id_perfil = p.id_perfil ORDER BY u.usuario";
-        List<Usuario> usuarios = new ArrayList<>();
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                usuarios.add(mapearUsuario(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return usuarios;
+        return listar(SELECT + " ORDER BY u.usuario", UsuarioDAO::mapearUsuario);
     }
 
     public boolean existeUsuario(String usuario) {
-        String sql = "SELECT COUNT(*) FROM usuario WHERE usuario = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, usuario);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return hay("SELECT COUNT(*) FROM usuario WHERE usuario = ?", usuario);
     }
 }

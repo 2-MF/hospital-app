@@ -1,7 +1,6 @@
 package utu.modelo;
 
 public class Modelo {
-
     private int idModelo;
     private String nombre;
     private boolean activo;

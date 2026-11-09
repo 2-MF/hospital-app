@@ -3,7 +3,6 @@ package utu.modelo;
 import java.time.LocalDate;
 
 public class Usuario {
-
     private int idUsuario;
     private String nombre;
     private String apellido;
@@ -71,43 +70,43 @@ public class Usuario {
         return correo;
     }
     public void setCorreo(String correo) {
-        this.correo = correo;   
+        this.correo = correo;
     }
     public String getUsuario() {
         return usuario;
     }
     public void setUsuario(String usuario) {
-        this.usuario = usuario; 
+        this.usuario = usuario;
     }
     public String getContrasena() {
         return contrasena;
     }
     public void setContrasena(String contrasena) {
-        this.contrasena = contrasena;   
+        this.contrasena = contrasena;
     }
     public LocalDate getFechaAlta() {
         return fechaAlta;
     }
     public void setFechaAlta(LocalDate fechaAlta) {
-        this.fechaAlta = fechaAlta; 
+        this.fechaAlta = fechaAlta;
     }
     public LocalDate getUltimoAcceso() {
         return ultimoAcceso;
     }
     public void setUltimoAcceso(LocalDate ultimoAcceso) {
-        this.ultimoAcceso = ultimoAcceso;   
+        this.ultimoAcceso = ultimoAcceso;
     }
     public boolean isActivo() {
         return activo;
     }
     public void setActivo(boolean activo) {
-        this.activo = activo;   
+        this.activo = activo;
     }
     public Perfil getPerfil() {
         return perfil;
     }
     public void setPerfil(Perfil perfil) {
-        this.perfil = perfil;   
+        this.perfil = perfil;
     }
     @Override
     public String toString() {
@@ -125,5 +124,4 @@ public class Usuario {
                 ", perfil=" + perfil +
                 '}';
     }
-    
 }

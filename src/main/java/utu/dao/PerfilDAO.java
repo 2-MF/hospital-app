@@ -1,19 +1,12 @@
 package utu.dao;
 
 import utu.modelo.Perfil;
-import utu.conexion.Conexion;
 
-import java.sql.*;
-import java.util.ArrayList;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
-public class PerfilDAO {
-
-    private final Connection conexion;
-
-    public PerfilDAO() {
-        conexion = Conexion.conectar();
-    }
+public class PerfilDAO extends BaseDAO {
 
     private Perfil mapearPerfil(ResultSet rs) throws SQLException {
         Perfil perfil = new Perfil();
@@ -25,106 +18,43 @@ public class PerfilDAO {
     }
 
     public boolean insertar(Perfil perfil) {
-        String sql = "INSERT INTO perfil (nombre, descripcion, activo) VALUES (?, ?, ?)";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, perfil.getNombre());
-            ps.setString(2, perfil.getDescripcion());
-            ps.setBoolean(3, perfil.isActivo());
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("perfil", "INSERT", "Alta de perfil '" + perfil.getNombre() + "'");
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        int id = insertarAuditado("INSERT INTO perfil (nombre, descripcion, activo) VALUES (?, ?, ?)",
+                "perfil", "Alta de perfil '" + perfil.getNombre() + "'",
+                perfil.getNombre(), perfil.getDescripcion(), perfil.isActivo());
+        if (id > 0) {
+            perfil.setIdPerfil(id);
         }
-        return false;
+        return id >= 0;
     }
 
     public boolean actualizar(Perfil perfil) {
-        String sql = "UPDATE perfil SET nombre = ?, descripcion = ?, activo = ? WHERE id_perfil = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, perfil.getNombre());
-            ps.setString(2, perfil.getDescripcion());
-            ps.setBoolean(3, perfil.isActivo());
-            ps.setInt(4, perfil.getIdPerfil());
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("perfil", "UPDATE", "Actualización de perfil '" + perfil.getNombre() + "'");
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return actualizarAuditado("UPDATE perfil SET nombre = ?, descripcion = ?, activo = ? WHERE id_perfil = ?",
+                "perfil", "Actualización de perfil '" + perfil.getNombre() + "'",
+                perfil.getNombre(), perfil.getDescripcion(), perfil.isActivo(), perfil.getIdPerfil());
     }
 
     public boolean eliminar(int id) {
-        String sql = "UPDATE perfil SET activo = false WHERE id_perfil = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("perfil", "DELETE", "Baja lógica de perfil id=" + id);
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return eliminarAuditado("UPDATE perfil SET activo = false WHERE id_perfil = ?",
+                "perfil", "Baja lógica de perfil id=" + id, id);
     }
 
     public Perfil buscarPorId(int id) {
-        String sql = "SELECT * FROM perfil WHERE id_perfil = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return mapearPerfil(rs);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return buscar("SELECT * FROM perfil WHERE id_perfil = ?", this::mapearPerfil, id);
     }
 
     public List<Perfil> listarTodos() {
-        String sql = "SELECT * FROM perfil ORDER BY nombre";
-        List<Perfil> perfiles = new ArrayList<>();
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                perfiles.add(mapearPerfil(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return perfiles;
+        return listar("SELECT * FROM perfil ORDER BY nombre", this::mapearPerfil);
     }
 
     public List<Perfil> listarActivas() {
-        String sql = "SELECT * FROM perfil WHERE activo = true ORDER BY nombre";
-        List<Perfil> perfiles = new ArrayList<>();
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                perfiles.add(mapearPerfil(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return perfiles;
+        return listar("SELECT * FROM perfil WHERE activo = true ORDER BY nombre", this::mapearPerfil);
     }
 
     public boolean existe(String nombre) {
-        String sql = "SELECT COUNT(*) FROM perfil WHERE UPPER(nombre) = UPPER(?)";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, nombre);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return existe(nombre, 0);
+    }
+
+    public boolean existe(String nombre, int idExcluir) {
+        return hay("SELECT COUNT(*) FROM perfil WHERE UPPER(nombre) = UPPER(?) AND id_perfil <> ?", nombre, idExcluir);
     }
 }

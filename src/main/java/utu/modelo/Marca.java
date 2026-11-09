@@ -1,7 +1,6 @@
 package utu.modelo;
 
 public class Marca {
-
     private int idMarca;
     private String nombre;
     private String descripcion;
@@ -39,7 +38,7 @@ public class Marca {
     public void setActivo(boolean activo) {
         this.activo = activo;
     }
-    @Override 
+    @Override
     public String toString() {
         return "Marca [idMarca=" + idMarca + ", nombre=" + nombre + ", descripcion=" + descripcion + ", activo="
                 + activo + "]";

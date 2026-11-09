@@ -1,7 +1,6 @@
 package utu.modelo;
 
 public class TipoIntervencion {
-
     private int idTipoIntervencion;
     private String nombre;
     private String descripcion;

@@ -2,11 +2,7 @@ package utu.util;
 
 import utu.modelo.Usuario;
 
-/**
- * Mantiene el usuario autenticado durante la sesión de la aplicación.
- */
 public class Sesion {
-
     private static Usuario usuarioActual;
 
     public static void setUsuario(Usuario usuario) {

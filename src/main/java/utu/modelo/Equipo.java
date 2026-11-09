@@ -3,7 +3,6 @@ package utu.modelo;
 import java.time.LocalDate;
 
 public class Equipo {
-
     private int idEquipo;
     private String codigo;
     private String nombre;

@@ -10,25 +10,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
 
-/**
- * Base de datos H2 en memoria (modo MySQL) para los tests.
- *
- * Debe invocarse desde @BeforeClass ANTES de usar cualquier DAO, porque
- * Conexion.conectar() lee los system properties la primera vez que conecta.
- *
- * Importante: los helpers abren su PROPIA conexión (nuevaConexion) en vez de
- * usar el singleton Conexion.conectar(), para no cerrarle la conexión compartida
- * a los DAOs bajo prueba.
- */
 public final class TestDatabase {
-
     private static final String PERFIL_ADMIN = "Administrador";
     private static boolean esquemaCreado;
 
     private TestDatabase() {
     }
 
-    /** Configura las propiedades de conexión y crea el esquema si aún no existe. */
     public static synchronized void setUp() {
         if (System.getProperty("hospital.db.url") == null) {
             System.setProperty("hospital.db.url",
@@ -73,17 +61,49 @@ public final class TestDatabase {
                         id_usuario INT,
                         FOREIGN KEY (id_usuario) REFERENCES usuario (id_usuario)
                     )""");
+            st.execute("""
+                    CREATE TABLE IF NOT EXISTS funcionalidad (
+                        id_funcionalidad INT AUTO_INCREMENT PRIMARY KEY,
+                        nombre VARCHAR(80) NOT NULL,
+                        descripcion VARCHAR(200)
+                    )""");
+            st.execute("""
+                    CREATE TABLE IF NOT EXISTS perfil_funcionalidad (
+                        id_perfil INT,
+                        id_funcionalidad INT,
+                        PRIMARY KEY (id_perfil, id_funcionalidad),
+                        FOREIGN KEY (id_perfil) REFERENCES perfil (id_perfil),
+                        FOREIGN KEY (id_funcionalidad) REFERENCES funcionalidad (id_funcionalidad)
+                    )""");
+            st.execute("""
+                    CREATE TABLE IF NOT EXISTS pais (
+                        id_pais INT AUTO_INCREMENT PRIMARY KEY,
+                        nombre VARCHAR(80) UNIQUE NOT NULL
+                    )""");
+            st.execute("""
+                    CREATE TABLE IF NOT EXISTS institucion (
+                        id_institucion INT AUTO_INCREMENT PRIMARY KEY,
+                        nombre VARCHAR(150),
+                        direccion VARCHAR(200),
+                        telefono VARCHAR(30),
+                        id_pais INT NOT NULL,
+                        activo BOOLEAN DEFAULT TRUE,
+                        FOREIGN KEY (id_pais) REFERENCES pais (id_pais)
+                    )""");
             esquemaCreado = true;
         } catch (SQLException e) {
             throw new IllegalStateException("No se pudo preparar la base de datos de prueba", e);
         }
     }
 
-    /** Borra los datos de prueba y vuelve a crear el perfil base. */
     public static synchronized void limpiar() {
         setUp();
         try (Connection cn = nuevaConexion(); Statement st = cn.createStatement()) {
             st.executeUpdate("DELETE FROM auditoria");
+            st.executeUpdate("DELETE FROM perfil_funcionalidad");
+            st.executeUpdate("DELETE FROM funcionalidad");
+            st.executeUpdate("DELETE FROM institucion");
+            st.executeUpdate("DELETE FROM pais");
             st.executeUpdate("DELETE FROM usuario");
             st.executeUpdate("DELETE FROM perfil");
             st.executeUpdate("INSERT INTO perfil (nombre, descripcion, activo) VALUES ('"
@@ -93,7 +113,6 @@ public final class TestDatabase {
         }
     }
 
-    /** Conexión propia e independiente para los helpers, con los datos configurados. */
     private static Connection nuevaConexion() throws SQLException {
         return DriverManager.getConnection(
                 System.getProperty("hospital.db.url"),
@@ -101,17 +120,22 @@ public final class TestDatabase {
                 System.getProperty("hospital.db.password"));
     }
 
-    /** Id del perfil usado por los usuarios de prueba. */
+    public static int insertar(String sql) {
+        try (Connection cn = nuevaConexion();
+             Statement st = cn.createStatement()) {
+            st.executeUpdate(sql, Statement.RETURN_GENERATED_KEYS);
+            ResultSet rs = st.getGeneratedKeys();
+            rs.next();
+            return rs.getInt(1);
+        } catch (SQLException e) {
+            throw new IllegalStateException("No se pudo insertar: " + sql, e);
+        }
+    }
+
     public static int idPerfilAdmin() {
         return (int) valorEscalar("SELECT id_perfil FROM perfil WHERE nombre = '" + PERFIL_ADMIN + "' LIMIT 1");
     }
 
-    /**
-     * Inserta un usuario de prueba directamente en la base.
-     *
-     * @param contrasenaPlano se guarda hasheado con BCrypt, igual que hace la app
-     * @return el id generado
-     */
     public static int crearUsuario(String nombreUsuario, String contrasenaPlano, boolean activo) {
         String sql = """
                 INSERT INTO usuario (nombre, apellido, cedula, telefono, correo, usuario, contrasena,
@@ -132,7 +156,6 @@ public final class TestDatabase {
         }
     }
 
-    /** Ejecuta un UPDATE/DELETE de prueba y devuelve la cantidad de filas afectadas. */
     public static int ejecutar(String sql) {
         try (Connection cn = nuevaConexion(); Statement st = cn.createStatement()) {
             return st.executeUpdate(sql);
@@ -141,7 +164,6 @@ public final class TestDatabase {
         }
     }
 
-    /** Primera columna/valor de una consulta de una sola fila, para aserciones. */
     public static Object valorEscalar(String sql) {
         try (Connection cn = nuevaConexion();
              Statement st = cn.createStatement();
@@ -155,7 +177,6 @@ public final class TestDatabase {
         }
     }
 
-    /** Valor DATE de una consulta como LocalDate, o null. */
     public static LocalDate valorFecha(String sql) {
         Object valor = valorEscalar(sql);
         return valor == null ? null : ((java.sql.Date) valor).toLocalDate();

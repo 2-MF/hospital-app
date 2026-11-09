@@ -3,7 +3,6 @@ package utu.modelo;
 import java.time.LocalDateTime;
 
 public class Auditoria {
-
     private int idAuditoria;
     private LocalDateTime fecha;
     private String tablaAfectada;

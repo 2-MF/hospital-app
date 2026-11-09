@@ -11,7 +11,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 public class SesionTest {
-
     @Before
     @After
     public void reiniciarSesion() {

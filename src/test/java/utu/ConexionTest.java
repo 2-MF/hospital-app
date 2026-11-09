@@ -13,7 +13,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class ConexionTest {
-
     @BeforeClass
     public static void prepararBase() {
         TestDatabase.setUp();
@@ -38,7 +37,7 @@ public class ConexionTest {
         campo.setAccessible(true);
         Connection previa = (Connection) campo.get(null);
         if (previa != null) {
-            previa.close(); // fuerza un nuevo intento de conexión
+            previa.close();
         }
         campo.set(null, null);
 
@@ -55,7 +54,7 @@ public class ConexionTest {
             } else {
                 System.setProperty("hospital.db.url", urlOriginal);
             }
-            campo.set(null, null); // los próximos tests reconectan con la URL correcta
+            campo.set(null, null);
         }
     }
 }

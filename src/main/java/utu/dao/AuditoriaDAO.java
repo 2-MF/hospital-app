@@ -1,59 +1,30 @@
 package utu.dao;
 
-import utu.conexion.Conexion;
 import utu.modelo.Auditoria;
 import utu.modelo.Usuario;
 import utu.util.Sesion;
 
-import java.sql.*;
-import java.util.ArrayList;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.List;
 
-public class AuditoriaDAO {
+public class AuditoriaDAO extends BaseDAO {
 
-    private final Connection conexion;
-
-    public AuditoriaDAO() {
-        conexion = Conexion.conectar();
-    }
-
-    /** Registra un evento de auditoría con el usuario de la sesión actual. */
     public boolean registrar(String tablaAfectada, String operacion, String descripcion) {
         Integer idUsuario = Sesion.getIdUsuario();
         return registrar(tablaAfectada, operacion, descripcion, idUsuario == null ? 0 : idUsuario);
     }
 
-    /** Registra un evento de auditoría con un id de usuario explícito (0 => sin usuario). */
     public boolean registrar(String tablaAfectada, String operacion, String descripcion, int idUsuario) {
-        String sql = "INSERT INTO auditoria (tabla_afectada, operacion, descripcion, id_usuario) VALUES (?, ?, ?, ?)";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, tablaAfectada);
-            ps.setString(2, operacion);
-            ps.setString(3, descripcion);
-            if (idUsuario > 0) {
-                ps.setInt(4, idUsuario);
-            } else {
-                ps.setNull(4, Types.INTEGER);
-            }
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
+        return ejecutar("INSERT INTO auditoria (tabla_afectada, operacion, descripcion, id_usuario) VALUES (?, ?, ?, ?)",
+                tablaAfectada, operacion, descripcion, idUsuario > 0 ? idUsuario : null);
     }
 
     public List<Auditoria> listarTodos() {
-        String sql = "SELECT a.*, u.nombre AS usuario_nombre, u.apellido AS usuario_apellido FROM auditoria a LEFT JOIN usuario u ON a.id_usuario = u.id_usuario ORDER BY a.id_auditoria DESC";
-        List<Auditoria> lista = new ArrayList<>();
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                lista.add(mapearAuditoria(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return lista;
+        return listar("SELECT a.*, u.nombre AS usuario_nombre, u.apellido AS usuario_apellido FROM auditoria a "
+                + "LEFT JOIN usuario u ON a.id_usuario = u.id_usuario ORDER BY a.id_auditoria DESC",
+                this::mapearAuditoria);
     }
 
     private Auditoria mapearAuditoria(ResultSet rs) throws SQLException {

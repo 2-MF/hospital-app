@@ -1,7 +1,6 @@
 package utu.modelo;
 
 public class Perfil {
-
     private int idPerfil;
     private String nombre;
     private String descripcion;
@@ -22,7 +21,7 @@ public class Perfil {
         this.idPerfil = idPerfil;
     }
     public String getNombre() {
-        return nombre; 
+        return nombre;
     }
     public void setNombre(String nombre) {
         this.nombre = nombre;
@@ -39,7 +38,7 @@ public class Perfil {
     public void setActivo(boolean activo) {
         this.activo = activo;
     }
-    @Override 
+    @Override
     public String toString() {
         return "Perfil{" +
                 "idPerfil=" + idPerfil +
@@ -48,5 +47,4 @@ public class Perfil {
                 ", activo=" + activo +
                 '}';
     }
-
 }

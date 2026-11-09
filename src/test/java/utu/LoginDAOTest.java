@@ -14,7 +14,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class LoginDAOTest {
-
     private static final String CLAVE = "claveSegura123";
 
     @BeforeClass
@@ -79,7 +78,6 @@ public class LoginDAOTest {
 
     @Test
     public void loginConHashCorruptoDevuelveNullSinLanzarExcepcion() {
-        // Simula un hash legacy o corrupto guardado en la base
         TestDatabase.crearUsuario("test_hash_roto", CLAVE, true);
         TestDatabase.ejecutar("UPDATE usuario SET contrasena = 'hash-corrupto' "
                 + "WHERE usuario = 'test_hash_roto'");

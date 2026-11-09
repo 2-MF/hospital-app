@@ -2,19 +2,15 @@ package utu.dao;
 
 import utu.modelo.Institucion;
 import utu.modelo.Pais;
-import utu.conexion.Conexion;
 
-import java.sql.*;
-import java.util.ArrayList;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
-public class InstitucionDAO {
+public class InstitucionDAO extends BaseDAO {
 
-    private final Connection conexion;
-
-    public InstitucionDAO() {
-        conexion = Conexion.conectar();
-    }
+    private static final String SELECT = "SELECT i.*, pa.nombre AS pais_nombre FROM institucion i "
+            + "INNER JOIN pais pa ON i.id_pais = pa.id_pais";
 
     private Institucion mapearInstitucion(ResultSet rs) throws SQLException {
         Institucion institucion = new Institucion();
@@ -30,96 +26,37 @@ public class InstitucionDAO {
         return institucion;
     }
 
+    private Object[] campos(Institucion i) {
+        return new Object[]{i.getNombre(), i.getDireccion(), i.getTelefono(), i.getPais().getIdPais(), i.isActivo()};
+    }
+
     public boolean insertar(Institucion institucion) {
-        String sql = "INSERT INTO institucion (nombre, direccion, telefono, id_pais, activo) VALUES (?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, institucion.getNombre());
-            ps.setString(2, institucion.getDireccion());
-            ps.setString(3, institucion.getTelefono());
-            ps.setInt(4, institucion.getPais().getIdPais());
-            ps.setBoolean(5, institucion.isActivo());
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("institucion", "INSERT", "Alta de institución '" + institucion.getNombre() + "'");
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return insertarAuditado(
+                "INSERT INTO institucion (nombre, direccion, telefono, id_pais, activo) VALUES (?, ?, ?, ?, ?)",
+                "institucion", "Alta de institución '" + institucion.getNombre() + "'", campos(institucion)) >= 0;
     }
 
     public boolean actualizar(Institucion institucion) {
-        String sql = "UPDATE institucion SET nombre = ?, direccion = ?, telefono = ?, id_pais = ?, activo = ? WHERE id_institucion = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, institucion.getNombre());
-            ps.setString(2, institucion.getDireccion());
-            ps.setString(3, institucion.getTelefono());
-            ps.setInt(4, institucion.getPais().getIdPais());
-            ps.setBoolean(5, institucion.isActivo());
-            ps.setInt(6, institucion.getIdInstitucion());
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("institucion", "UPDATE", "Actualización de institución '" + institucion.getNombre() + "'");
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return actualizarAuditado(
+                "UPDATE institucion SET nombre = ?, direccion = ?, telefono = ?, id_pais = ?, activo = ? WHERE id_institucion = ?",
+                "institucion", "Actualización de institución '" + institucion.getNombre() + "'",
+                con(campos(institucion), institucion.getIdInstitucion()));
     }
 
     public boolean eliminar(int id) {
-        String sql = "UPDATE institucion SET activo = false WHERE id_institucion = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("institucion", "DELETE", "Baja lógica de institución id=" + id);
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return eliminarAuditado("UPDATE institucion SET activo = false WHERE id_institucion = ?",
+                "institucion", "Baja lógica de institución id=" + id, id);
     }
 
     public Institucion buscarPorId(int id) {
-        String sql = "SELECT i.*, pa.nombre AS pais_nombre FROM institucion i INNER JOIN pais pa ON i.id_pais = pa.id_pais WHERE i.id_institucion = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return mapearInstitucion(rs);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return buscar(SELECT + " WHERE i.id_institucion = ?", this::mapearInstitucion, id);
     }
 
     public List<Institucion> listarTodos() {
-        String sql = "SELECT i.*, pa.nombre AS pais_nombre FROM institucion i INNER JOIN pais pa ON i.id_pais = pa.id_pais ORDER BY i.nombre";
-        List<Institucion> instituciones = new ArrayList<>();
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                instituciones.add(mapearInstitucion(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return instituciones;
+        return listar(SELECT + " ORDER BY i.nombre", this::mapearInstitucion);
     }
 
     public List<Institucion> listarActivas() {
-        String sql = "SELECT i.*, pa.nombre AS pais_nombre FROM institucion i INNER JOIN pais pa ON i.id_pais = pa.id_pais WHERE i.activo = true ORDER BY i.nombre";
-        List<Institucion> instituciones = new ArrayList<>();
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                instituciones.add(mapearInstitucion(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return instituciones;
+        return listar(SELECT + " WHERE i.activo = true ORDER BY i.nombre", this::mapearInstitucion);
     }
 }

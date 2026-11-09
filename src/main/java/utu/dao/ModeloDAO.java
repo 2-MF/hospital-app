@@ -1,20 +1,16 @@
 package utu.dao;
 
-import utu.modelo.Modelo;
 import utu.modelo.Marca;
-import utu.conexion.Conexion;
+import utu.modelo.Modelo;
 
-import java.sql.*;
-import java.util.ArrayList;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
-public class ModeloDAO {
+public class ModeloDAO extends BaseDAO {
 
-    private final Connection conexion;
-
-    public ModeloDAO() {
-        conexion = Conexion.conectar();
-    }
+    private static final String SELECT = "SELECT m.*, ma.nombre AS marca_nombre FROM modelo m "
+            + "LEFT JOIN marca ma ON m.id_marca = ma.id_marca";
 
     private Modelo mapearModelo(ResultSet rs) throws SQLException {
         Modelo modelo = new Modelo();
@@ -28,92 +24,35 @@ public class ModeloDAO {
         return modelo;
     }
 
+    private Object[] campos(Modelo m) {
+        return new Object[]{m.getNombre(), m.getMarca().getIdMarca(), m.isActivo()};
+    }
+
     public boolean insertar(Modelo modelo) {
-        String sql = "INSERT INTO modelo (nombre, id_marca, activo) VALUES (?, ?, ?)";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, modelo.getNombre());
-            ps.setInt(2, modelo.getMarca().getIdMarca());
-            ps.setBoolean(3, modelo.isActivo());
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("modelo", "INSERT", "Alta de modelo '" + modelo.getNombre() + "'");
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return insertarAuditado("INSERT INTO modelo (nombre, id_marca, activo) VALUES (?, ?, ?)",
+                "modelo", "Alta de modelo '" + modelo.getNombre() + "'", campos(modelo)) >= 0;
     }
 
     public boolean actualizar(Modelo modelo) {
-        String sql = "UPDATE modelo SET nombre = ?, id_marca = ?, activo = ? WHERE id_modelo = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, modelo.getNombre());
-            ps.setInt(2, modelo.getMarca().getIdMarca());
-            ps.setBoolean(3, modelo.isActivo());
-            ps.setInt(4, modelo.getIdModelo());
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("modelo", "UPDATE", "Actualización de modelo '" + modelo.getNombre() + "'");
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return actualizarAuditado("UPDATE modelo SET nombre = ?, id_marca = ?, activo = ? WHERE id_modelo = ?",
+                "modelo", "Actualización de modelo '" + modelo.getNombre() + "'",
+                con(campos(modelo), modelo.getIdModelo()));
     }
 
     public boolean eliminar(int id) {
-        String sql = "UPDATE modelo SET activo = false WHERE id_modelo = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("modelo", "DELETE", "Baja lógica de modelo id=" + id);
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return eliminarAuditado("UPDATE modelo SET activo = false WHERE id_modelo = ?",
+                "modelo", "Baja lógica de modelo id=" + id, id);
     }
 
     public Modelo buscarPorId(int id) {
-        String sql = "SELECT m.*, ma.nombre AS marca_nombre FROM modelo m LEFT JOIN marca ma ON m.id_marca = ma.id_marca WHERE m.id_modelo = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return mapearModelo(rs);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return buscar(SELECT + " WHERE m.id_modelo = ?", this::mapearModelo, id);
     }
 
     public List<Modelo> listarTodos() {
-        String sql = "SELECT m.*, ma.nombre AS marca_nombre FROM modelo m LEFT JOIN marca ma ON m.id_marca = ma.id_marca ORDER BY m.nombre";
-        List<Modelo> modelos = new ArrayList<>();
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                modelos.add(mapearModelo(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return modelos;
+        return listar(SELECT + " ORDER BY m.nombre", this::mapearModelo);
     }
 
     public List<Modelo> listarActivas() {
-        String sql = "SELECT m.*, ma.nombre AS marca_nombre FROM modelo m LEFT JOIN marca ma ON m.id_marca = ma.id_marca WHERE m.activo = true ORDER BY m.nombre";
-        List<Modelo> modelos = new ArrayList<>();
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                modelos.add(mapearModelo(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return modelos;
+        return listar(SELECT + " WHERE m.activo = true ORDER BY m.nombre", this::mapearModelo);
     }
 }

@@ -17,7 +17,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class AuditoriaDAOTest {
-
     private AuditoriaDAO dao;
 
     @BeforeClass
@@ -60,7 +59,7 @@ public class AuditoriaDAOTest {
 
     @Test
     public void registrarSinSesionGuardaElUsuarioComoNull() {
-        Sesion.cerrar(); // nadie logueado
+        Sesion.cerrar();
 
         assertTrue(dao.registrar("usuario", "DELETE", "Evento sin usuario"));
 
@@ -89,7 +88,6 @@ public class AuditoriaDAOTest {
 
     @Test
     public void registrarConIdUsuarioInexistenteNoRompePorLaForeignKey() {
-        // id 0 => "sin usuario": el DAO debe guardar NULL, no un id que viola la FK
         assertTrue(dao.registrar("usuario", "INSERT", "Evento con id 0", 0));
 
         Object idEnBase = TestDatabase.valorEscalar(
@@ -100,7 +98,7 @@ public class AuditoriaDAOTest {
     @Test
     public void listarTodosOrdenaDelRegistroMasRecienteAlMasAntiguo() {
         crearUsuarioDePrueba("test_orden");
-        dao.registrar("usuario", "INSERT", "primero"); // sin sesión => id_usuario NULL
+        dao.registrar("usuario", "INSERT", "primero");
         dao.registrar("usuario", "UPDATE", "segundo");
 
         List<Auditoria> registros = dao.listarTodos();

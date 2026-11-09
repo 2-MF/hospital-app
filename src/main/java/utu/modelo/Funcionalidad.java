@@ -1,7 +1,6 @@
 package utu.modelo;
 
 public class Funcionalidad {
-
     private int idFuncionalidad;
     private String nombre;
     private String descripcion;

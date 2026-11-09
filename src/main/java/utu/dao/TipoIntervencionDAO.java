@@ -1,99 +1,43 @@
 package utu.dao;
 
 import utu.modelo.TipoIntervencion;
-import utu.conexion.Conexion;
 
-import java.sql.*;
-import java.util.ArrayList;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
-public class TipoIntervencionDAO {
-
-    private final Connection conexion;
-
-    public TipoIntervencionDAO() {
-        conexion = Conexion.conectar();
-    }
+public class TipoIntervencionDAO extends BaseDAO {
 
     private TipoIntervencion mapearTipoIntervencion(ResultSet rs) throws SQLException {
-        TipoIntervencion tipoIntervencion = new TipoIntervencion();
-        tipoIntervencion.setIdTipoIntervencion(rs.getInt("id_tipo_intervencion"));
-        tipoIntervencion.setNombre(rs.getString("nombre"));
-        tipoIntervencion.setDescripcion(rs.getString("descripcion"));
-        return tipoIntervencion;
+        TipoIntervencion tipo = new TipoIntervencion();
+        tipo.setIdTipoIntervencion(rs.getInt("id_tipo_intervencion"));
+        tipo.setNombre(rs.getString("nombre"));
+        tipo.setDescripcion(rs.getString("descripcion"));
+        return tipo;
     }
 
-    public boolean insertar(TipoIntervencion tipoIntervencion) {
-        String sql = "INSERT INTO tipo_intervencion (nombre, descripcion) VALUES (?, ?)";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, tipoIntervencion.getNombre());
-            ps.setString(2, tipoIntervencion.getDescripcion());
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("tipo_intervencion", "INSERT", "Alta de tipo de intervención '" + tipoIntervencion.getNombre() + "'");
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+    public boolean insertar(TipoIntervencion tipo) {
+        return insertarAuditado("INSERT INTO tipo_intervencion (nombre, descripcion) VALUES (?, ?)",
+                "tipo_intervencion", "Alta de tipo de intervención '" + tipo.getNombre() + "'",
+                tipo.getNombre(), tipo.getDescripcion()) >= 0;
     }
 
-    public boolean actualizar(TipoIntervencion tipoIntervencion) {
-        String sql = "UPDATE tipo_intervencion SET nombre = ?, descripcion = ? WHERE id_tipo_intervencion = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, tipoIntervencion.getNombre());
-            ps.setString(2, tipoIntervencion.getDescripcion());
-            ps.setInt(3, tipoIntervencion.getIdTipoIntervencion());
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("tipo_intervencion", "UPDATE", "Actualización de tipo de intervención '" + tipoIntervencion.getNombre() + "'");
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+    public boolean actualizar(TipoIntervencion tipo) {
+        return actualizarAuditado("UPDATE tipo_intervencion SET nombre = ?, descripcion = ? WHERE id_tipo_intervencion = ?",
+                "tipo_intervencion", "Actualización de tipo de intervención '" + tipo.getNombre() + "'",
+                tipo.getNombre(), tipo.getDescripcion(), tipo.getIdTipoIntervencion());
     }
 
     public boolean eliminar(int id) {
-        String sql = "DELETE FROM tipo_intervencion WHERE id_tipo_intervencion = ?";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            if (ps.executeUpdate() > 0) {
-                new AuditoriaDAO().registrar("tipo_intervencion", "DELETE", "Eliminación de tipo de intervención id=" + id);
-                return true;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return eliminarAuditado("DELETE FROM tipo_intervencion WHERE id_tipo_intervencion = ?",
+                "tipo_intervencion", "Eliminación de tipo de intervención id=" + id, id);
     }
 
     public List<TipoIntervencion> listarTodos() {
-        String sql = "SELECT * FROM tipo_intervencion ORDER BY nombre";
-        List<TipoIntervencion> tiposIntervencion = new ArrayList<>();
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                tiposIntervencion.add(mapearTipoIntervencion(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return tiposIntervencion;
+        return listar("SELECT * FROM tipo_intervencion ORDER BY nombre", this::mapearTipoIntervencion);
     }
 
     public boolean existe(String nombre) {
-        String sql = "SELECT COUNT(*) FROM tipo_intervencion WHERE UPPER(nombre) = UPPER(?)";
-        try (PreparedStatement ps = conexion.prepareStatement(sql)) {
-            ps.setString(1, nombre);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        return hay("SELECT COUNT(*) FROM tipo_intervencion WHERE UPPER(nombre) = UPPER(?)", nombre);
     }
 }

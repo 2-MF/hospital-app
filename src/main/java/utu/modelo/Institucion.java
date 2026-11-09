@@ -1,7 +1,6 @@
 package utu.modelo;
 
 public class Institucion {
-
     private int idInstitucion;
     private String nombre;
     private String direccion;
